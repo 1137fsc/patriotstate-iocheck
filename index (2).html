@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Patriot State SWD - IO Check</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #111827;
+            color: white;
+            padding: 8px;
+            padding-bottom: 100px;
+        }
+        .header {
+            position: sticky;
+            top: 0;
+            background: #111827;
+            padding: 8px 0;
+            border-bottom: 1px solid #374151;
+            z-index: 100;
+        }
+        .title { color: #60a5fa; font-size: 18px; font-weight: bold; }
+        .subtitle { color: #9ca3af; font-size: 12px; }
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+        .tab {
+            padding: 8px 12px;
+            background: #374151;
+            border: none;
+            color: #9ca3af;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .tab.active { background: #3b82f6; color: white; }
+        .progress-bar {
+            margin-top: 8px;
+            background: #374151;
+            border-radius: 20px;
+            height: 28px;
+            position: relative;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: linear-gradient(90deg, #059669, #10b981);
+            height: 100%;
+            transition: width 0.3s;
+            border-radius: 20px;
+        }
+        .progress-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .area {
+            margin-top: 8px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .area-header {
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+        .area-title {
+            font-weight: bold;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .area-count {
+            font-size: 12px;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #374151;
+        }
+        .area-count.complete { background: #059669; }
+        .instruments { display: none; padding: 4px; }
+        .instruments.open { display: block; }
+        .instrument {
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 4px 0;
+            transition: background 0.2s;
+        }
+        .instrument.checked { background: #064e3b; }
+        .inst-main {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+        }
+        .checkbox {
+            width: 36px;
+            height: 36px;
+            border: 3px solid #6b7280;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 20px;
+            transition: all 0.2s;
+        }
+        .instrument.checked .checkbox {
+            border-color: #34d399;
+            background: #059669;
+        }
+        .inst-info { flex: 1; min-width: 0; }
+        .inst-tag {
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .inst-type {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        .inst-desc {
+            font-size: 13px;
+            color: #9ca3af;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .inst-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            margin-top: 8px;
+            margin-left: 48px;
+            font-size: 11px;
+            color: #9ca3af;
+        }
+        .inst-details span { display: flex; align-items: center; gap: 4px; }
+        .modbus-addr {
+            background: #7c3aed;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+        
+        /* Terminal Flow Section */
+        .terminal-flow {
+            margin-top: 8px;
+            margin-left: 48px;
+            background: #374151;
+            border-radius: 6px;
+            padding: 8px;
+        }
+        .flow-title {
+            font-size: 10px;
+            color: #9ca3af;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+        .flow-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+        .flow-label {
+            font-size: 10px;
+            color: #6b7280;
+            min-width: 60px;
+        }
+        .flow-input {
+            background: #1f2937;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            padding: 4px 6px;
+            color: white;
+            font-size: 11px;
+            font-family: monospace;
+            width: 80px;
+        }
+        .flow-arrow {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .note-section {
+            margin-top: 8px;
+            margin-left: 48px;
+        }
+        .add-note-btn {
+            background: #374151;
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .note-text {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #fcd34d;
+            font-style: italic;
+        }
+        
+        /* Equipment Cards */
+        .equip-card {
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+        .equip-card.checked { background: #064e3b; }
+        .equip-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+        .equip-title {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .equip-subtitle {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+        .equip-checks {
+            margin-top: 12px;
+            margin-left: 48px;
+        }
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid #374151;
+        }
+        .check-item:last-child { border-bottom: none; }
+        .mini-check {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #6b7280;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .mini-check.checked {
+            border-color: #34d399;
+            background: #059669;
+        }
+        .check-label {
+            flex: 1;
+            font-size: 13px;
+        }
+        .check-input {
+            background: #374151;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: white;
+            font-size: 11px;
+            font-family: monospace;
+            width: 100px;
+        }
+        
+        /* Diagram Section */
+        .diagram-container {
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            overflow-x: auto;
+        }
+        .diagram-svg {
+            width: 100%;
+            min-width: 600px;
+            height: auto;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 200;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 8px;
+        }
+        .modal.open { display: flex; }
+        .modal-content {
+            background: #1f2937;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            padding: 16px;
+        }
+        .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 12px; }
+        .modal-textarea {
+            width: 100%;
+            height: 120px;
+            background: #374151;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-size: 14px;
+            resize: none;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .modal-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .modal-btn.cancel { background: #4b5563; color: white; }
+        .modal-btn.save { background: #059669; color: white; }
+        .reset-btn {
+            position: fixed;
+            bottom: 16px;
+            right: 16px;
+            background: #dc2626;
+            border: none;
+            color: white;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            font-size: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            z-index: 50;
+        }
+        .footer {
+            margin-top: 24px;
+            text-align: center;
+            padding: 16px;
+            background: #1f2937;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .arrow { transition: transform 0.2s; }
+        .arrow.open { transform: rotate(90deg); }
+        
+        /* Modbus Legend */
+        .modbus-legend {
+            background: #1f2937;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+        }
+        .legend-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #7c3aed;
+        }
+        .legend-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 12px;
+            border-bottom: 1px solid #374151;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <div class="title">PATRIOT STATE SWD #1</div>
+                <div class="subtitle">Commissioning Checklist - Blackbuck Resources</div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('instruments')">📡 Instruments</button>
+            <button class="tab" onclick="showTab('drives')">⚡ Drives/VFDs</button>
+            <button class="tab" onclick="showTab('comms')">🔌 Comms/HMI</button>
+            <button class="tab" onclick="showTab('diagram')">🗺️ Layout</button>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+            <div class="progress-text" id="progressText">0 / 0 (0%)</div>
+        </div>
+    </div>
+
+    <!-- INSTRUMENTS TAB -->
+    <div id="tab-instruments" class="tab-content active">
+        <!-- Modbus Legend -->
+        <div class="modbus-legend">
+            <div class="legend-title">📋 MODBUS ADDRESS SCHEME</div>
+            <div class="legend-item"><span>10xx Series</span><span>Inlet Area</span></div>
+            <div class="legend-item"><span>20xx Series</span><span>Tanks/Vessels</span></div>
+            <div class="legend-item"><span>30xx Series</span><span>Pumps/Filters</span></div>
+            <div class="legend-item"><span>40xx Series</span><span>Injection/Well</span></div>
+            <div style="margin-top: 8px; font-size: 11px; color: #9ca3af;">
+                Modbus devices route: Device → Comfront → DA30 → PLC
+            </div>
+        </div>
+        <div id="instruments-content"></div>
+    </div>
+
+    <!-- DRIVES TAB -->
+    <div id="tab-drives" class="tab-content">
+        <div id="drives-content"></div>
+    </div>
+
+    <!-- COMMS TAB -->
+    <div id="tab-comms" class="tab-content">
+        <div id="comms-content"></div>
+    </div>
+
+    <!-- DIAGRAM TAB -->
+    <div id="tab-diagram" class="tab-content">
+        <div class="diagram-container">
+            <svg class="diagram-svg" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+                <!-- Background -->
+                <rect width="800" height="600" fill="#1f2937"/>
+                
+                <!-- Title -->
+                <text x="400" y="30" text-anchor="middle" fill="#60a5fa" font-size="16" font-weight="bold">PATRIOT STATE SWD #1 - FACILITY LAYOUT</text>
+                
+                <!-- PLC Panel -->
+                <rect x="360" y="50" width="80" height="50" fill="#374151" stroke="#60a5fa" stroke-width="2" rx="4"/>
+                <text x="400" y="80" text-anchor="middle" fill="white" font-size="10">PLC PANEL</text>
+                
+                <!-- Ethernet Switch -->
+                <rect x="500" y="55" width="60" height="40" fill="#374151" stroke="#22c55e" stroke-width="2" rx="4"/>
+                <text x="530" y="78" text-anchor="middle" fill="white" font-size="8">ETH SW</text>
+                
+                <!-- DA30 -->
+                <rect x="600" y="55" width="60" height="40" fill="#374151" stroke="#7c3aed" stroke-width="2" rx="4"/>
+                <text x="630" y="73" text-anchor="middle" fill="white" font-size="8">DA30</text>
+                <text x="630" y="85" text-anchor="middle" fill="#9ca3af" font-size="6">Modbus→ETH</text>
+                
+                <!-- HMI -->
+                <rect x="250" y="55" width="60" height="40" fill="#374151" stroke="#f59e0b" stroke-width="2" rx="4"/>
+                <text x="280" y="78" text-anchor="middle" fill="white" font-size="8">HMI</text>
+                
+                <!-- Comfront -->
+                <rect x="700" y="55" width="60" height="40" fill="#374151" stroke="#ec4899" stroke-width="2" rx="4"/>
+                <text x="730" y="73" text-anchor="middle" fill="white" font-size="8">COMFRONT</text>
+                <text x="730" y="85" text-anchor="middle" fill="#9ca3af" font-size="6">RS-485 Hub</text>
+                
+                <!-- Connection Lines - Ethernet -->
+                <line x1="440" y1="75" x2="500" y2="75" stroke="#22c55e" stroke-width="2"/>
+                <line x1="310" y1="75" x2="360" y2="75" stroke="#22c55e" stroke-width="2"/>
+                <line x1="560" y1="75" x2="600" y2="75" stroke="#22c55e" stroke-width="2"/>
+                
+                <!-- Connection Lines - Modbus -->
+                <line x1="660" y1="75" x2="700" y2="75" stroke="#7c3aed" stroke-width="2" stroke-dasharray="4"/>
+                
+                <!-- INLET AREA -->
+                <rect x="30" y="130" width="180" height="100" fill="#1e3a5f" stroke="#3b82f6" stroke-width="2" rx="4"/>
+                <text x="120" y="150" text-anchor="middle" fill="#3b82f6" font-size="10" font-weight="bold">INLET AREA</text>
+                <text x="40" y="170" fill="#9ca3af" font-size="8">PIT-100101, PIT-100102</text>
+                <text x="40" y="185" fill="#9ca3af" font-size="8">FIT-100102 (Modbus 10xx)</text>
+                <text x="40" y="200" fill="#9ca3af" font-size="8">SDV-100101, CV-100101</text>
+                <text x="40" y="215" fill="#9ca3af" font-size="8">ESD-100101</text>
+                
+                <!-- HWSB/OIL TANKS -->
+                <rect x="230" y="130" width="160" height="100" fill="#1e3a3a" stroke="#10b981" stroke-width="2" rx="4"/>
+                <text x="310" y="150" text-anchor="middle" fill="#10b981" font-size="10" font-weight="bold">VESSEL AREA</text>
+                <text x="240" y="170" fill="#9ca3af" font-size="8">LIT-400, LIT-410 (Oil)</text>
+                <text x="240" y="185" fill="#9ca3af" font-size="8">LIT-510, LIT-520 (Water)</text>
+                <text x="240" y="200" fill="#9ca3af" font-size="8">LS-3000/3010 (HWSB)</text>
+                <text x="240" y="215" fill="#9ca3af" font-size="8">LS-500/510 (Water)</text>
+                
+                <!-- CHARGE PUMPS -->
+                <rect x="410" y="130" width="160" height="100" fill="#3b1f4a" stroke="#8b5cf6" stroke-width="2" rx="4"/>
+                <text x="490" y="150" text-anchor="middle" fill="#8b5cf6" font-size="10" font-weight="bold">CHARGE PUMPS</text>
+                <text x="420" y="170" fill="#9ca3af" font-size="8">VFD-600 (P-600)</text>
+                <text x="420" y="185" fill="#9ca3af" font-size="8">VFD-610 (P-610)</text>
+                <text x="420" y="200" fill="#9ca3af" font-size="8">DPIT-6100 (Filter)</text>
+                <text x="420" y="215" fill="#9ca3af" font-size="8">HS-630L (Recirc)</text>
+                
+                <!-- H-PUMPS -->
+                <rect x="590" y="130" width="180" height="180" fill="#4a1f1f" stroke="#ef4444" stroke-width="2" rx="4"/>
+                <text x="680" y="150" text-anchor="middle" fill="#ef4444" font-size="10" font-weight="bold">INJECTION PUMPS</text>
+                <text x="600" y="170" fill="#9ca3af" font-size="8">P-6000: VFD, RTDs (9), PIT, VT, TIT</text>
+                <text x="600" y="185" fill="#9ca3af" font-size="8">P-6010: VFD, RTDs (9), PIT, VT, TIT</text>
+                <text x="600" y="200" fill="#9ca3af" font-size="8">FIT-6000/6010 (Modbus 40xx)</text>
+                <text x="600" y="215" fill="#9ca3af" font-size="8">CV-6000/6010, MOV-6100</text>
+                <text x="600" y="230" fill="#9ca3af" font-size="8">LS-6000B/6010B (Lube Oil)</text>
+                <rect x="600" y="240" width="160" height="60" fill="#3b1f1f" stroke="#f97316" stroke-width="1" rx="2"/>
+                <text x="680" y="255" text-anchor="middle" fill="#f97316" font-size="8">VFD CABINET</text>
+                <text x="610" y="270" fill="#6b7280" font-size="7">RTDs route through here</text>
+                <text x="610" y="285" fill="#6b7280" font-size="7">to PLC RTD cards</text>
+                
+                <!-- WELLHEAD -->
+                <rect x="590" y="320" width="180" height="60" fill="#1f2937" stroke="#64748b" stroke-width="2" rx="4"/>
+                <text x="680" y="340" text-anchor="middle" fill="#64748b" font-size="10" font-weight="bold">WELLHEAD</text>
+                <text x="600" y="360" fill="#9ca3af" font-size="8">PIT-PS#1A (Tubing)</text>
+                <text x="600" y="375" fill="#9ca3af" font-size="8">PIT-PS#1B (Casing)</text>
+                
+                <!-- CONTAINMENT -->
+                <rect x="30" y="250" width="180" height="60" fill="#1f2937" stroke="#06b6d4" stroke-width="2" rx="4"/>
+                <text x="120" y="270" text-anchor="middle" fill="#06b6d4" font-size="10" font-weight="bold">CONTAINMENT</text>
+                <text x="40" y="295" fill="#9ca3af" font-size="8">LS-700101, ESD-2000</text>
+                
+                <!-- Signal Flow Legend -->
+                <rect x="30" y="400" width="300" height="120" fill="#1f2937" stroke="#4b5563" stroke-width="1" rx="4"/>
+                <text x="180" y="420" text-anchor="middle" fill="white" font-size="10" font-weight="bold">SIGNAL ROUTING</text>
+                
+                <line x1="50" y1="440" x2="80" y2="440" stroke="#22c55e" stroke-width="2"/>
+                <text x="90" y="444" fill="#9ca3af" font-size="9">Ethernet/IP (VFDs, HMI)</text>
+                
+                <line x1="50" y1="460" x2="80" y2="460" stroke="#3b82f6" stroke-width="2"/>
+                <text x="90" y="464" fill="#9ca3af" font-size="9">4-20mA / 24VDC (Direct to PLC)</text>
+                
+                <line x1="50" y1="480" x2="80" y2="480" stroke="#7c3aed" stroke-width="2" stroke-dasharray="4"/>
+                <text x="90" y="484" fill="#9ca3af" font-size="9">Modbus RS-485 (via Comfront→DA30)</text>
+                
+                <line x1="50" y1="500" x2="80" y2="500" stroke="#f97316" stroke-width="2"/>
+                <text x="90" y="504" fill="#9ca3af" font-size="9">RTD (via VFD Cabinet to PLC)</text>
+                
+                <!-- Connection lines from areas to PLC -->
+                <path d="M 120 130 Q 120 110 400 100" stroke="#3b82f6" stroke-width="1" fill="none"/>
+                <path d="M 310 130 Q 310 110 400 100" stroke="#10b981" stroke-width="1" fill="none"/>
+                <path d="M 490 130 Q 490 110 400 100" stroke="#8b5cf6" stroke-width="1" fill="none"/>
+                <path d="M 680 130 Q 680 110 530 75" stroke="#22c55e" stroke-width="1" fill="none"/>
+                
+            </svg>
+        </div>
+        <div style="padding: 12px; font-size: 12px; color: #9ca3af;">
+            <p><strong>Signal Paths:</strong></p>
+            <p>• Analog/Discrete: Device → Junction Box → PLC Panel (Slot X Ch X)</p>
+            <p>• Modbus: Device → Comfront → DA30 → PLC (Ethernet)</p>
+            <p>• H-Pump RTDs: Motor → VFD Cabinet TB → PLC RTD Cards</p>
+            <p>• VFDs: Ethernet/IP direct to switch</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div>BLACKBUCK RESOURCES - PATRIOT STATE SWD #1</div>
+        <div>Data auto-saves to your browser</div>
+        <div style="margin-top: 8px;">Rev A | Commissioning Checklist</div>
+    </div>
+
+    <button class="reset-btn" onclick="resetAll()">RESET</button>
+
+    <div class="modal" id="noteModal">
+        <div class="modal-content">
+            <div class="modal-title" id="modalTitle">Notes</div>
+            <textarea class="modal-textarea" id="noteInput" placeholder="Enter notes, issues, readings..."></textarea>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-btn save" onclick="saveNote()">Save Note</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Facility Data with Modbus addresses and terminal routing
+        const facilityData = {
+            "INLET AREA (PD-1001)": {
+                color: "#3b82f6",
+                instruments: [
+                    { tag: "PIT-100101", type: "PIT", desc: "Pipeline Pressure Transmitter", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 4 Ch 0" },
+                    { tag: "PIT-100102", type: "PIT", desc: "Inlet Pressure Transmitter", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 4 Ch 1" },
+                    { tag: "FIT-100102", type: "FIT", desc: "Inlet Flow Meter", comm: "Modbus RS-485", power: "24VDC", modbus: "1001", route: "modbus", plc: "Comfront" },
+                    { tag: "ESD-100101", type: "ESD", desc: "ESD Station", comm: "24VDC DI", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 1 Ch 0" },
+                    { tag: "SDV-100101", type: "SDV", desc: "Inlet Shutdown Valve", comm: "24VDC DO/DI", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 1/3" },
+                    { tag: "CV-100101", type: "CV", desc: "Inlet Control Valve", comm: "4-20mA AO", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 7 Ch 0" },
+                ]
+            },
+            "HWSB VESSEL AREA (PD-2001)": {
+                color: "#10b981",
+                instruments: [
+                    { tag: "LS-3000", type: "LS", desc: "TK-3000 HH Level Switch", comm: "24VDC DI", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 1 Ch 2" },
+                    { tag: "LS-3010", type: "LS", desc: "TK-3010 HH Level Switch", comm: "24VDC DI", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 1 Ch 3" },
+                ]
+            },
+            "OIL VESSEL AREA (PD-3001)": {
+                color: "#f59e0b",
+                instruments: [
+                    { tag: "LIT-400", type: "LIT", desc: "TK-400 Tank Level Transmitter", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 4 Ch 2" },
+                    { tag: "LIT-410", type: "LIT", desc: "TK-410 Tank Level Transmitter", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 4 Ch 3" },
+                ]
+            },
+            "PRODUCED WATER VESSEL AREA (PD-4001)": {
+                color: "#06b6d4",
+                instruments: [
+                    { tag: "LS-500", type: "LS", desc: "TK-500 HH Level Switch", comm: "24VDC DI", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 1 Ch 4" },
+                    { tag: "LS-510", type: "LS", desc: "TK-510 HH Level Switch", comm: "24VDC DI", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 1 Ch 5" },
+                    { tag: "LIT-510", type: "LIT", desc: "TK-510 Level Transmitter", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 4 Ch 4" },
+                    { tag: "LIT-520", type: "LIT", desc: "TK-520 Level Transmitter", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 4 Ch 5" },
+                ]
+            },
+            "CHARGE PUMP & FILTER AREA (PD-5001)": {
+                color: "#8b5cf6",
+                instruments: [
+                    { tag: "DPIT-6100", type: "DPIT", desc: "Filter Differential Pressure", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 4 Ch 6" },
+                    { tag: "HS-630L", type: "HS", desc: "Recirc Pump Hand Switch", comm: "24VDC DI", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 2 Ch 4" },
+                ]
+            },
+            "INJECTION & WELL AREA (PD-6001)": {
+                color: "#ef4444",
+                instruments: [
+                    { tag: "FIT-6000", type: "FIT", desc: "P-6000 Injection Flow Meter", comm: "Modbus RS-485", power: "24VDC", modbus: "4001", route: "modbus", plc: "Comfront" },
+                    { tag: "FIT-6010", type: "FIT", desc: "P-6010 Injection Flow Meter", comm: "Modbus RS-485", power: "24VDC", modbus: "4002", route: "modbus", plc: "Comfront" },
+                    { tag: "PIT-6000A", type: "PIT", desc: "P-6000 Suction Pressure", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 5 Ch 0" },
+                    { tag: "PIT-6000B", type: "PIT", desc: "P-6000 Discharge Pressure", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 5 Ch 1" },
+                    { tag: "PIT-6010A", type: "PIT", desc: "P-6010 Suction Pressure", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 6 Ch 0" },
+                    { tag: "PIT-6010B", type: "PIT", desc: "P-6010 Discharge Pressure", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 6 Ch 1" },
+                    { tag: "VT-6000", type: "VT", desc: "P-6000 Vibration Transmitter", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 5 Ch 2" },
+                    { tag: "VT-6010", type: "VT", desc: "P-6010 Vibration Transmitter", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 6 Ch 2" },
+                    { tag: "TIT-6000C", type: "TIT", desc: "P-6000 Thrust Chamber Temp", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 5 Ch 3" },
+                    { tag: "TIT-6010C", type: "TIT", desc: "P-6010 Thrust Chamber Temp", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 6 Ch 3" },
+                    { tag: "CV-6000", type: "CV", desc: "P-6000 Discharge Control Valve", comm: "4-20mA AO", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 7 Ch 1" },
+                    { tag: "CV-6010", type: "CV", desc: "P-6010 Discharge Control Valve", comm: "4-20mA AO", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 7 Ch 2" },
+                    { tag: "LS-6000B", type: "LS", desc: "P-6000 Lube Oil Low Level", comm: "24VDC DI", power: "24VDC", modbus: null, route: "vfd", plc: "Slot 2 Ch 0" },
+                    { tag: "LS-6010B", type: "LS", desc: "P-6010 Lube Oil Low Level", comm: "24VDC DI", power: "24VDC", modbus: null, route: "vfd", plc: "Slot 2 Ch 1" },
+                    { tag: "MOV-6100", type: "MOV", desc: "Injection MOV", comm: "24VDC DO/DI", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 1/3" },
+                    { tag: "PIT-PS#1A", type: "PIT", desc: "Well Tubing Pressure", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 5 Ch 4" },
+                    { tag: "PIT-PS#1B", type: "PIT", desc: "Well Casing Pressure", comm: "4-20mA", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 5 Ch 5" },
+                ]
+            },
+            "H-PUMP RTDs - P-6000": {
+                color: "#ec4899",
+                instruments: [
+                    { tag: "RTD-6000A", type: "RTD", desc: "Motor NDE Bearing", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 8 Ch 0" },
+                    { tag: "RTD-6000B", type: "RTD", desc: "Motor DE Bearing", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 8 Ch 1" },
+                    { tag: "RTD-6000C", type: "RTD", desc: "Motor Winding A-1", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 8 Ch 2" },
+                    { tag: "RTD-6000D", type: "RTD", desc: "Motor Winding A-1", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 8 Ch 3" },
+                    { tag: "RTD-6000E", type: "RTD", desc: "Motor Winding B-1", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 9 Ch 0" },
+                    { tag: "RTD-6000F", type: "RTD", desc: "Motor Winding C-1", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 9 Ch 1" },
+                    { tag: "RTD-6000G", type: "RTD", desc: "Motor Winding A-2", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 9 Ch 2" },
+                    { tag: "RTD-6000H", type: "RTD", desc: "Motor Winding B-2", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 9 Ch 3" },
+                    { tag: "RTD-6000I", type: "RTD", desc: "Motor Winding C-2", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 8 spare" },
+                ]
+            },
+            "H-PUMP RTDs - P-6010": {
+                color: "#f97316",
+                instruments: [
+                    { tag: "RTD-6010A", type: "RTD", desc: "Motor NDE Bearing", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 10 Ch 0" },
+                    { tag: "RTD-6010B", type: "RTD", desc: "Motor DE Bearing", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 10 Ch 1" },
+                    { tag: "RTD-6010C", type: "RTD", desc: "Motor Winding A-1", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 10 Ch 2" },
+                    { tag: "RTD-6010D", type: "RTD", desc: "Motor Winding A-1", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 10 Ch 3" },
+                    { tag: "RTD-6010E", type: "RTD", desc: "Motor Winding B-1", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 11 Ch 0" },
+                    { tag: "RTD-6010F", type: "RTD", desc: "Motor Winding C-1", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 11 Ch 1" },
+                    { tag: "RTD-6010G", type: "RTD", desc: "Motor Winding A-2", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 11 Ch 2" },
+                    { tag: "RTD-6010H", type: "RTD", desc: "Motor Winding B-2", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 11 Ch 3" },
+                    { tag: "RTD-6010I", type: "RTD", desc: "Motor Winding C-2", comm: "3-Wire RTD", power: "N/A", modbus: null, route: "vfd", plc: "Slot 10 spare" },
+                ]
+            },
+            "CONTAINMENT & FACILITY": {
+                color: "#64748b",
+                instruments: [
+                    { tag: "LS-700101", type: "LS", desc: "Containment HH Level Switch", comm: "24VDC DI", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 1 Ch 1" },
+                    { tag: "ESD-2000", type: "ESD", desc: "Facility ESD Switch", comm: "24VDC DI", power: "24VDC", modbus: null, route: "hardwire", plc: "Slot 1 Ch 0" },
+                ]
+            }
+        };
+
+        // Drives/VFDs Data
+        const drivesData = [
+            { tag: "VFD-600", desc: "Charge Pump P-600", type: "VFD", location: "MCC" },
+            { tag: "VFD-610", desc: "Charge Pump P-610", type: "VFD", location: "MCC" },
+            { tag: "VFD-6000", desc: "Injection Pump P-6000", type: "VFD", location: "VFD Cabinet" },
+            { tag: "VFD-6010", desc: "Injection Pump P-6010", type: "VFD", location: "VFD Cabinet" },
+            { tag: "STR-630", desc: "Recirc Pump P-630", type: "Starter", location: "MCC" },
+        ];
+
+        // Comms Equipment Data
+        const commsData = [
+            { tag: "HMI-2000", desc: "Red Lion HMI", type: "HMI", checks: ["Power (24VDC)", "Ethernet to Switch"] },
+            { tag: "DA30-2000", desc: "Red Lion DA30 Protocol Converter", type: "Gateway", checks: ["Power (24VDC)", "RS-485 from Comfront", "Ethernet to Switch"] },
+            { tag: "COMFRONT", desc: "Comfront RS-485 Hub", type: "Hub", checks: ["Power (24VDC)", "RS-485 to FIT-100102", "RS-485 to FIT-6000", "RS-485 to FIT-6010", "RS-485 to DA30"] },
+            { tag: "ETH-SW", desc: "Ethernet Switch", type: "Switch", checks: ["Power", "Port 1 - PLC", "Port 2 - HMI", "Port 3 - DA30", "Port 4 - VFD-600", "Port 5 - VFD-610", "Port 6 - VFD-6000", "Port 7 - VFD-6010"] },
+        ];
+
+        let checks = {};
+        let notes = {};
+        let terminals = {};
+        let expandedAreas = {};
+        let currentEditTag = null;
+
+        // Load saved data
+        function loadData() {
+            try {
+                const saved = localStorage.getItem('patriotstate_commissioning');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    checks = data.checks || {};
+                    notes = data.notes || {};
+                    terminals = data.terminals || {};
+                }
+            } catch(e) {}
+            Object.keys(facilityData).forEach(a => expandedAreas[a] = true);
+        }
+
+        // Save data
+        function saveData() {
+            try {
+                localStorage.setItem('patriotstate_commissioning', JSON.stringify({ checks, notes, terminals }));
+            } catch(e) {}
+        }
+
+        // Tab switching
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            let total = 0, checked = 0;
+            Object.values(facilityData).forEach(area => {
+                area.instruments.forEach(inst => {
+                    total++;
+                    if (checks[inst.tag]) checked++;
+                });
+            });
+            drivesData.forEach(d => {
+                total += 5; // HOA Hand, HOA Auto, Start Relay, Ethernet, Feedback
+                ['hoa_hand', 'hoa_auto', 'start_relay', 'ethernet', 'feedback'].forEach(c => {
+                    if (checks[`${d.tag}_${c}`]) checked++;
+                });
+            });
+            commsData.forEach(c => {
+                c.checks.forEach((chk, i) => {
+                    total++;
+                    if (checks[`${c.tag}_${i}`]) checked++;
+                });
+            });
+            const pct = Math.round((checked / total) * 100);
+            document.getElementById('progressFill').style.width = pct + '%';
+            document.getElementById('progressText').textContent = `${checked} / ${total} (${pct}%)`;
+        }
+
+        // Toggle check
+        function toggleCheck(key) {
+            checks[key] = !checks[key];
+            saveData();
+            render();
+        }
+
+        // Toggle area expand
+        function toggleArea(area) {
+            expandedAreas[area] = !expandedAreas[area];
+            render();
+        }
+
+        // Update terminal
+        function updateTerminal(tag, field, value) {
+            if (!terminals[tag]) terminals[tag] = {};
+            terminals[tag][field] = value;
+            saveData();
+        }
+
+        // Open note modal
+        function openNote(tag, event) {
+            event.stopPropagation();
+            currentEditTag = tag;
+            document.getElementById('modalTitle').textContent = tag + ' Notes';
+            document.getElementById('noteInput').value = notes[tag] || '';
+            document.getElementById('noteModal').classList.add('open');
+            document.getElementById('noteInput').focus();
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('noteModal').classList.remove('open');
+            currentEditTag = null;
+        }
+
+        // Save note
+        function saveNote() {
+            if (currentEditTag) {
+                notes[currentEditTag] = document.getElementById('noteInput').value;
+                saveData();
+                closeModal();
+                render();
+            }
+        }
+
+        // Reset all
+        function resetAll() {
+            if (confirm('Reset all checks, notes, and terminal entries? This cannot be undone.')) {
+                checks = {};
+                notes = {};
+                terminals = {};
+                saveData();
+                render();
+            }
+        }
+
+        // Get terminal value
+        function getTerminal(tag, field) {
+            return (terminals[tag] && terminals[tag][field]) || '';
+        }
+
+        // Render instruments
+        function renderInstruments() {
+            let html = '';
+            
+            Object.entries(facilityData).forEach(([areaName, areaData]) => {
+                const areaChecked = areaData.instruments.filter(i => checks[i.tag]).length;
+                const areaTotal = areaData.instruments.length;
+                const isComplete = areaChecked === areaTotal;
+                const isOpen = expandedAreas[areaName];
+
+                html += `
+                    <div class="area">
+                        <div class="area-header" onclick="toggleArea('${areaName}')" 
+                             style="background: ${areaData.color}40; border-left: 4px solid ${areaData.color};">
+                            <div class="area-title">
+                                <span class="arrow ${isOpen ? 'open' : ''}">▶</span>
+                                ${areaName}
+                            </div>
+                            <span class="area-count ${isComplete ? 'complete' : ''}">${areaChecked}/${areaTotal}</span>
+                        </div>
+                        <div class="instruments ${isOpen ? 'open' : ''}">
+                `;
+
+                areaData.instruments.forEach(inst => {
+                    const isChecked = checks[inst.tag];
+                    const noteText = notes[inst.tag];
+                    
+                    // Determine terminal flow based on route type
+                    let terminalFlow = '';
+                    if (inst.route === 'hardwire') {
+                        terminalFlow = `
+                            <div class="terminal-flow">
+                                <div class="flow-title">Terminal Landing Path</div>
+                                <div class="flow-row">
+                                    <span class="flow-label">Device</span>
+                                    <input class="flow-input" placeholder="TB-?" value="${getTerminal(inst.tag, 'device')}" 
+                                           onchange="updateTerminal('${inst.tag}', 'device', this.value)">
+                                    <span class="flow-arrow">→</span>
+                                    <span class="flow-label">JB Term</span>
+                                    <input class="flow-input" placeholder="TB-?" value="${getTerminal(inst.tag, 'jb')}" 
+                                           onchange="updateTerminal('${inst.tag}', 'jb', this.value)">
+                                    <span class="flow-arrow">→</span>
+                                    <span class="flow-label">PLC</span>
+                                    <input class="flow-input" placeholder="${inst.plc}" value="${getTerminal(inst.tag, 'plc') || inst.plc}" 
+                                           onchange="updateTerminal('${inst.tag}', 'plc', this.value)">
+                                </div>
+                            </div>
+                        `;
+                    } else if (inst.route === 'modbus') {
+                        terminalFlow = `
+                            <div class="terminal-flow">
+                                <div class="flow-title">Modbus Path</div>
+                                <div class="flow-row">
+                                    <span class="flow-label">Device</span>
+                                    <input class="flow-input" placeholder="TB-?" value="${getTerminal(inst.tag, 'device')}" 
+                                           onchange="updateTerminal('${inst.tag}', 'device', this.value)">
+                                    <span class="flow-arrow">→</span>
+                                    <span class="flow-label">Comfront</span>
+                                    <input class="flow-input" placeholder="Port?" value="${getTerminal(inst.tag, 'comfront')}" 
+                                           onchange="updateTerminal('${inst.tag}', 'comfront', this.value)">
+                                    <span class="flow-arrow">→</span>
+                                    <span class="flow-label">DA30→PLC</span>
+                                    <span style="color:#7c3aed;font-size:11px;">Ethernet</span>
+                                </div>
+                            </div>
+                        `;
+                    } else if (inst.route === 'vfd') {
+                        terminalFlow = `
+                            <div class="terminal-flow">
+                                <div class="flow-title">Via VFD Cabinet</div>
+                                <div class="flow-row">
+                                    <span class="flow-label">Device</span>
+                                    <input class="flow-input" placeholder="Motor TB" value="${getTerminal(inst.tag, 'device')}" 
+                                           onchange="updateTerminal('${inst.tag}', 'device', this.value)">
+                                    <span class="flow-arrow">→</span>
+                                    <span class="flow-label">VFD Cab</span>
+                                    <input class="flow-input" placeholder="TB-?" value="${getTerminal(inst.tag, 'vfd_cab')}" 
+                                           onchange="updateTerminal('${inst.tag}', 'vfd_cab', this.value)">
+                                    <span class="flow-arrow">→</span>
+                                    <span class="flow-label">PLC</span>
+                                    <input class="flow-input" placeholder="${inst.plc}" value="${getTerminal(inst.tag, 'plc') || inst.plc}" 
+                                           onchange="updateTerminal('${inst.tag}', 'plc', this.value)">
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    html += `
+                        <div class="instrument ${isChecked ? 'checked' : ''}">
+                            <div class="inst-main" onclick="toggleCheck('${inst.tag}')">
+                                <div class="checkbox">${isChecked ? '✓' : ''}</div>
+                                <div class="inst-info">
+                                    <div>
+                                        <span class="inst-tag">${inst.tag}</span>
+                                        <span class="inst-type" style="background: ${areaData.color}">${inst.type}</span>
+                                        ${inst.modbus ? `<span class="modbus-addr">MB: ${inst.modbus}</span>` : ''}
+                                    </div>
+                                    <div class="inst-desc">${inst.desc}</div>
+                                </div>
+                            </div>
+                            <div class="inst-details">
+                                <span>📡 ${inst.comm}</span>
+                                <span>⚡ ${inst.power}</span>
+                            </div>
+                            ${terminalFlow}
+                            <div class="note-section">
+                                <button class="add-note-btn" onclick="openNote('${inst.tag}', event)">
+                                    ${noteText ? '📝 Edit Note' : '+ Add Note'}
+                                </button>
+                                ${noteText ? `<div class="note-text">"${noteText}"</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`;
+            });
+
+            document.getElementById('instruments-content').innerHTML = html;
+        }
+
+        // Render drives
+        function renderDrives() {
+            let html = '<div style="padding:8px;font-size:12px;color:#9ca3af;background:#1f2937;border-radius:8px;margin-bottom:8px;">Each drive needs: HOA switch (Hand + Auto pairs), Start relay (NO contacts), Ethernet, Feedback to PLC</div>';
+            
+            drivesData.forEach(drive => {
+                const driveChecks = ['hoa_hand', 'hoa_auto', 'start_relay', 'ethernet', 'feedback'];
+                const checkedCount = driveChecks.filter(c => checks[`${drive.tag}_${c}`]).length;
+                const isComplete = checkedCount === 5;
+                
+                html += `
+                    <div class="equip-card ${isComplete ? 'checked' : ''}">
+                        <div class="equip-header">
+                            <div class="checkbox" style="width:36px;height:36px;" onclick="toggleAllDriveChecks('${drive.tag}')">${isComplete ? '✓' : ''}</div>
+                            <div>
+                                <div class="equip-title">${drive.tag}</div>
+                                <div class="equip-subtitle">${drive.desc} - ${drive.location}</div>
+                            </div>
+                            <span class="area-count ${isComplete ? 'complete' : ''}">${checkedCount}/5</span>
+                        </div>
+                        <div class="equip-checks">
+                            <div class="check-item">
+                                <div class="mini-check ${checks[`${drive.tag}_hoa_hand`] ? 'checked' : ''}" 
+                                     onclick="toggleCheck('${drive.tag}_hoa_hand')">${checks[`${drive.tag}_hoa_hand`] ? '✓' : ''}</div>
+                                <span class="check-label">HOA - HAND (pair)</span>
+                                <input class="check-input" placeholder="TB-?" value="${getTerminal(drive.tag, 'hoa_hand')}"
+                                       onchange="updateTerminal('${drive.tag}', 'hoa_hand', this.value)">
+                            </div>
+                            <div class="check-item">
+                                <div class="mini-check ${checks[`${drive.tag}_hoa_auto`] ? 'checked' : ''}" 
+                                     onclick="toggleCheck('${drive.tag}_hoa_auto')">${checks[`${drive.tag}_hoa_auto`] ? '✓' : ''}</div>
+                                <span class="check-label">HOA - AUTO (pair)</span>
+                                <input class="check-input" placeholder="TB-?" value="${getTerminal(drive.tag, 'hoa_auto')}"
+                                       onchange="updateTerminal('${drive.tag}', 'hoa_auto', this.value)">
+                            </div>
+                            <div class="check-item">
+                                <div class="mini-check ${checks[`${drive.tag}_start_relay`] ? 'checked' : ''}" 
+                                     onclick="toggleCheck('${drive.tag}_start_relay')">${checks[`${drive.tag}_start_relay`] ? '✓' : ''}</div>
+                                <span class="check-label">Start Cmd → Relay (NO)</span>
+                                <input class="check-input" placeholder="Relay?" value="${getTerminal(drive.tag, 'start_relay')}"
+                                       onchange="updateTerminal('${drive.tag}', 'start_relay', this.value)">
+                            </div>
+                            <div class="check-item">
+                                <div class="mini-check ${checks[`${drive.tag}_ethernet`] ? 'checked' : ''}" 
+                                     onclick="toggleCheck('${drive.tag}_ethernet')">${checks[`${drive.tag}_ethernet`] ? '✓' : ''}</div>
+                                <span class="check-label">Ethernet to Switch</span>
+                                <input class="check-input" placeholder="Port?" value="${getTerminal(drive.tag, 'ethernet')}"
+                                       onchange="updateTerminal('${drive.tag}', 'ethernet', this.value)">
+                            </div>
+                            <div class="check-item">
+                                <div class="mini-check ${checks[`${drive.tag}_feedback`] ? 'checked' : ''}" 
+                                     onclick="toggleCheck('${drive.tag}_feedback')">${checks[`${drive.tag}_feedback`] ? '✓' : ''}</div>
+                                <span class="check-label">Run Feedback to PLC</span>
+                                <input class="check-input" placeholder="Slot Ch?" value="${getTerminal(drive.tag, 'feedback')}"
+                                       onchange="updateTerminal('${drive.tag}', 'feedback', this.value)">
+                            </div>
+                        </div>
+                        <div class="note-section" style="margin-left:0;margin-top:12px;">
+                            <button class="add-note-btn" onclick="openNote('${drive.tag}', event)">
+                                ${notes[drive.tag] ? '📝 Edit Note' : '+ Add Note'}
+                            </button>
+                            ${notes[drive.tag] ? `<div class="note-text">"${notes[drive.tag]}"</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('drives-content').innerHTML = html;
+        }
+
+        // Render comms
+        function renderComms() {
+            let html = '';
+            
+            commsData.forEach(comm => {
+                const checkedCount = comm.checks.filter((c, i) => checks[`${comm.tag}_${i}`]).length;
+                const isComplete = checkedCount === comm.checks.length;
+                
+                html += `
+                    <div class="equip-card ${isComplete ? 'checked' : ''}">
+                        <div class="equip-header">
+                            <div class="checkbox" style="width:36px;height:36px;">${isComplete ? '✓' : ''}</div>
+                            <div>
+                                <div class="equip-title">${comm.tag}</div>
+                                <div class="equip-subtitle">${comm.desc}</div>
+                            </div>
+                            <span class="area-count ${isComplete ? 'complete' : ''}">${checkedCount}/${comm.checks.length}</span>
+                        </div>
+                        <div class="equip-checks">
+                `;
+                
+                comm.checks.forEach((chk, i) => {
+                    html += `
+                        <div class="check-item">
+                            <div class="mini-check ${checks[`${comm.tag}_${i}`] ? 'checked' : ''}" 
+                                 onclick="toggleCheck('${comm.tag}_${i}')">${checks[`${comm.tag}_${i}`] ? '✓' : ''}</div>
+                            <span class="check-label">${chk}</span>
+                            <input class="check-input" placeholder="Term/Port" value="${getTerminal(comm.tag, `chk_${i}`)}"
+                                   onchange="updateTerminal('${comm.tag}', 'chk_${i}', this.value)">
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                        <div class="note-section" style="margin-left:0;margin-top:12px;">
+                            <button class="add-note-btn" onclick="openNote('${comm.tag}', event)">
+                                ${notes[comm.tag] ? '📝 Edit Note' : '+ Add Note'}
+                            </button>
+                            ${notes[comm.tag] ? `<div class="note-text">"${notes[comm.tag]}"</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('comms-content').innerHTML = html;
+        }
+
+        // Render all
+        function render() {
+            updateProgress();
+            renderInstruments();
+            renderDrives();
+            renderComms();
+        }
+
+        // Initialize
+        loadData();
+        render();
+    </script>
+</body>
+</html>
